@@ -1,0 +1,6 @@
+name: ChunkHeat
+version: ${project.version}
+main: com.bilicraft.chunkheat.ChunkHeat
+api-version: 1.17
+authors: [ Bilicraft ]
+description: The mob farmer destoryer

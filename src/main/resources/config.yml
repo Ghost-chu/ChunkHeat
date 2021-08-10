@@ -1,0 +1,13 @@
+whitelist-worlds:
+  - world_ignored
+limit: 200
+whitelist-spawnreason:
+  - BEEHIVE
+  - BREEDING
+  - BUILD_IRONGOLEM
+  - BUILD_SNOWMAN
+  - BUILD_WITHER
+  - COMMAND
+  - SPAWNER
+  - SPAWNER_EGG
+  - EXPLOSION
