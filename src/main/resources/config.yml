@@ -1,6 +1,6 @@
 whitelist-worlds:
   - world_ignored
-limit: 200
+limit: 300
 whitelist-spawnreason:
   - BEEHIVE
   - BREEDING

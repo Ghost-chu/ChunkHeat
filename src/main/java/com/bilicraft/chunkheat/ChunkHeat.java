@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -90,6 +91,22 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         int counts = counter.getAInteger().incrementAndGet();
         if (counts > limit) {
             event.setCancelled(true);
+        }
+    }
+    @EventHandler(ignoreCancelled = true)
+    public void onMobDeath(EntityDeathEvent event){
+        if (!(event.getEntity() instanceof Mob)) return;
+        if (!whitelistedWorld.contains(event.getEntity().getWorld().getUID())) return;
+        Chunk chunk = event.getEntity().getLocation().getChunk();
+        LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
+        if (counter == null) {
+            counter = new LimitEntry(new AtomicInteger(0), System.currentTimeMillis());
+            chunkHeapMap.put(chunk, counter);
+        }
+        int counts = counter.getAInteger().incrementAndGet();
+        if (counts > limit) {
+            event.setDroppedExp(0);
+            event.getDrops().clear();
         }
     }
 }
