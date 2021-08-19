@@ -25,7 +25,6 @@ public class LimitEntry {
 
     @Override
     public String toString() {
-        return "Count= " + ainteger.get() +
-                ", ResetTime= " + removeLimitTime;
+        return "Count=" + ainteger.get();
     }
 }
