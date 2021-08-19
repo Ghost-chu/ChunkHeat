@@ -4,3 +4,7 @@ main: com.bilicraft.chunkheat.ChunkHeat
 api-version: 1.17
 authors: [ Bilicraft ]
 description: The mob farmer destoryer
+commands:
+  chunkheat:
+    description: chunk heat
+    usage: /chunkheat

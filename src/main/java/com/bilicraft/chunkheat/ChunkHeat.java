@@ -3,9 +3,14 @@ package com.bilicraft.chunkheat;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.World;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -16,6 +21,8 @@ import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -81,27 +88,30 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
     public void onMobSpawning(CreatureSpawnEvent event) {
         if (!(event.getEntity() instanceof Mob)) return;
         if (whitelistedSpawnReason.contains(event.getSpawnReason())) return;
-        //noinspection ConstantConditions
-        if (!whitelistedWorld.contains(event.getLocation().getWorld().getUID())) return;
+        if (whitelistedWorld.contains(event.getLocation().getWorld().getUID())) return;
         Chunk chunk = event.getLocation().getChunk();
         LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
         if (counter == null) {
             counter = new LimitEntry(new AtomicInteger(0), System.currentTimeMillis());
             chunkHeapMap.put(chunk, counter);
-        }
-        int counts = counter.getAInteger().incrementAndGet();
-        if (counts > limit) {
-            event.setCancelled(true);
+        } else {
+            int counts = counter.getAInteger().incrementAndGet();
+            if (counts > limit) {
+                event.setCancelled(true);
+            }
         }
     }
+
     @EventHandler(ignoreCancelled = true)
-    public void onMobDeath(EntityDeathEvent event){
+    public void onMobDeath(EntityDeathEvent event) {
         if (!(event.getEntity() instanceof Mob)) return;
         if (!whitelistedWorld.contains(event.getEntity().getWorld().getUID())) return;
-        if(event.getEntity().getLastDamageCause() == null) return;
-        if(event.getEntity().getLastDamageCause().getCause() != EntityDamageEvent.DamageCause.ENTITY_ATTACK &&
-                event.getEntity().getLastDamageCause().getCause() != EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK)
-            return;
+        if (event.getEntity().getLastDamageCause() == null) return;
+        if (event.getEntity().getLastDamageCause().getEntity() instanceof Player) return;
+        if (event.getEntity().getLastDamageCause().getEntity() instanceof Projectile){
+            Projectile projectile = (Projectile) event.getEntity().getLastDamageCause().getEntity();
+            if(projectile.getShooter() instanceof Player) return;
+        }
         Chunk chunk = event.getEntity().getLocation().getChunk();
         LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
         if (counter == null) {
@@ -113,5 +123,29 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             event.setDroppedExp(0);
             event.getDrops().clear();
         }
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission("chunkheat.admin")) {
+            sender.sendMessage("No permission");
+            return true;
+        }
+        sender.sendMessage("Checking... " + this.chunkHeapMap.size());
+        //this.chunkHeapMap.asMap().entrySet().forEach(set->sender.sendMessage(set.toString()));
+        new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getAInteger().get())).forEach(data -> {
+            String color = ChatColor.GREEN.toString();
+            if (data.getValue().getAInteger().get() > limit) {
+                color = ChatColor.YELLOW.toString();
+                sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
+                        + " => " + data.getValue().toString() + "(" + data.getKey().getBlock(0, 0, 0).getLocation() + ")");
+            } else {
+                sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
+                        + " => " + data.getValue().toString());
+            }
+
+
+        });
+        return true;
     }
 }

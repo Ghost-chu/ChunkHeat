@@ -22,4 +22,10 @@ public class LimitEntry {
 
     private final AtomicInteger ainteger;
     private long removeLimitTime = 0;
+
+    @Override
+    public String toString() {
+        return "Count= " + ainteger.get() +
+                ", ResetTime= " + removeLimitTime;
+    }
 }
