@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class ChunkHeat extends JavaPlugin implements Listener {
 
     private final Cache<Chunk, LimitEntry> chunkHeapMap = CacheBuilder.newBuilder()
-            .expireAfterWrite(30, TimeUnit.MINUTES)
+            .expireAfterWrite(1, TimeUnit.HOURS)
             .maximumSize(50000)
             .build();
 
