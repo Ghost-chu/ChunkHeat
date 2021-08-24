@@ -10,34 +10,29 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ChunkHeat extends JavaPlugin implements Listener {
-
     private final Cache<Chunk, LimitEntry> chunkHeapMap = CacheBuilder.newBuilder()
             .expireAfterWrite(1, TimeUnit.HOURS)
-            .maximumSize(50000)
+            .initialCapacity(10000)
+            .maximumSize(10000)
             .build();
 
     private final Set<UUID> whitelistedWorld = new CopyOnWriteArraySet<>();
-    private final Set<CreatureSpawnEvent.SpawnReason> whitelistedSpawnReason = new CopyOnWriteArraySet<>();
+    private final Set<CreatureSpawnEvent.SpawnReason> whitelistedSpawnReason = new HashSet<>();
     private int limit;
 
     @Override
@@ -94,11 +89,10 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         if (counter == null) {
             counter = new LimitEntry(new AtomicInteger(0), System.currentTimeMillis());
             chunkHeapMap.put(chunk, counter);
-        } else {
-            int counts = counter.getAInteger().incrementAndGet();
-            if (counts > limit) {
-                event.setCancelled(true);
-            }
+        }
+        int counts = counter.getAInteger().incrementAndGet();
+        if (counts > limit) {
+            event.setCancelled(true);
         }
     }
 
@@ -108,10 +102,6 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         if (!whitelistedWorld.contains(event.getEntity().getWorld().getUID())) return;
         if (event.getEntity().getLastDamageCause() == null) return;
         if (event.getEntity().getLastDamageCause().getEntity() instanceof Player) return;
-        if (event.getEntity().getLastDamageCause().getEntity() instanceof Projectile){
-            Projectile projectile = (Projectile) event.getEntity().getLastDamageCause().getEntity();
-            if(projectile.getShooter() instanceof Player) return;
-        }
         Chunk chunk = event.getEntity().getLocation().getChunk();
         LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
         if (counter == null) {
