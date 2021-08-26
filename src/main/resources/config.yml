@@ -1,5 +1,7 @@
 whitelist-worlds:
   - world_ignored
+# Reset Time: TimeUnit: minute
+reset-time: 60
 limit: 1000
 whitelist-spawnreason:
   - BEEHIVE

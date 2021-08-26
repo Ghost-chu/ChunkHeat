@@ -25,11 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ChunkHeat extends JavaPlugin implements Listener {
-    private final Cache<Chunk, LimitEntry> chunkHeapMap = CacheBuilder.newBuilder()
-            .expireAfterWrite(1, TimeUnit.HOURS)
-            .initialCapacity(10000)
-            .maximumSize(10000)
-            .build();
+    private Cache<Chunk, LimitEntry> chunkHeapMap;
 
     private final Set<UUID> whitelistedWorld = new CopyOnWriteArraySet<>();
     private final Set<CreatureSpawnEvent.SpawnReason> whitelistedSpawnReason = new HashSet<>();
@@ -38,8 +34,14 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         // Plugin startup logic
-        chunkHeapMap.invalidateAll(); // Reset data
         saveDefaultConfig();
+
+        chunkHeapMap = CacheBuilder.newBuilder()
+                .expireAfterWrite(getConfig().getInt("reset-time",60), TimeUnit.MINUTES)
+                .initialCapacity(10000)
+                .maximumSize(10000)
+                .build();
+
         getConfig().getStringList("whitelist-worlds").forEach(world -> {
             World bukkitWorld = Bukkit.getWorld(world);
             if (bukkitWorld == null) return;
@@ -121,13 +123,13 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             sender.sendMessage("No permission");
             return true;
         }
-        sender.sendMessage("Checking... " + this.chunkHeapMap.size());
+        sender.sendMessage("Reading all data... " + this.chunkHeapMap.size());
         //this.chunkHeapMap.asMap().entrySet().forEach(set->sender.sendMessage(set.toString()));
         new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getAInteger().get())).forEach(data -> {
             String color = ChatColor.GREEN.toString();
             if (data.getValue().getAInteger().get() > limit) {
                 color = ChatColor.YELLOW.toString();
-                sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
+                sender.sendMessage(color +"[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
                         + " => " + data.getValue().toString() + "(" + data.getKey().getBlock(0, 0, 0).getLocation() + ")");
             } else {
                 sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
