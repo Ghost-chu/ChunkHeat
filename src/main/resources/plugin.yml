@@ -1,7 +1,7 @@
 name: ChunkHeat
 version: ${project.version}
 main: com.bilicraft.chunkheat.ChunkHeat
-api-version: 1.17
+api-version: 1.13
 authors: [ Bilicraft ]
 description: The mob farmer destoryer
 commands:
