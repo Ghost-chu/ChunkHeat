@@ -123,21 +123,39 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             sender.sendMessage("No permission");
             return true;
         }
-        sender.sendMessage("Reading all data... " + this.chunkHeapMap.size());
-        //this.chunkHeapMap.asMap().entrySet().forEach(set->sender.sendMessage(set.toString()));
-        new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getAInteger().get())).forEach(data -> {
-            String color = ChatColor.GREEN.toString();
-            if (data.getValue().getAInteger().get() > limit) {
-                color = ChatColor.YELLOW.toString();
-                sender.sendMessage(color +"[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
-                        + " => " + data.getValue().toString() + "(" + data.getKey().getBlock(0, 0, 0).getLocation() + ")");
-            } else {
-                sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
-                        + " => " + data.getValue().toString());
+
+        if(args.length < 1){
+            sender.sendMessage("Reading all data... " + this.chunkHeapMap.size());
+            //this.chunkHeapMap.asMap().entrySet().forEach(set->sender.sendMessage(set.toString()));
+            new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getAInteger().get())).forEach(data -> {
+                String color = ChatColor.GREEN.toString();
+                if (data.getValue().getAInteger().get() > limit) {
+                    color = ChatColor.YELLOW.toString();
+                    sender.sendMessage(color +"[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
+                            + " => " + data.getValue().toString() + "(" + data.getKey().getBlock(0, 0, 0).getLocation() + ")");
+                } else {
+                    sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
+                            + " => " + data.getValue().toString());
+                }
+
+
+            });
+        }else{
+            //noinspection SwitchStatementWithTooFewBranches
+            switch (args[0]){
+                case "get":
+                 if(sender instanceof Player){
+                     Chunk chunk = ((Player) sender).getLocation().getChunk();
+                     LimitEntry entry = chunkHeapMap.getIfPresent(chunk);
+                     sender.sendMessage(ChatColor.BLUE+"This Chunk heat value is: "+ChatColor.YELLOW+ (entry == null ? "0" : entry.getAInteger().get()));
+                 }else{
+                     sender.sendMessage("This command only can be executed by Player.");
+                 }
             }
 
+        }
 
-        });
+
         return true;
     }
 }
