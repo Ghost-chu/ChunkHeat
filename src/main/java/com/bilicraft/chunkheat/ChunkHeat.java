@@ -131,10 +131,10 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
                 String color = ChatColor.GREEN.toString();
                 if (data.getValue().getAInteger().get() > limit) {
                     color = ChatColor.YELLOW.toString();
-                    sender.sendMessage(color +"[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
+                    sender.sendMessage(color +"[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getZ()
                             + " => " + data.getValue().toString() + "(" + data.getKey().getBlock(0, 0, 0).getLocation() + ")");
                 } else {
-                    sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
+                    sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getZ()
                             + " => " + data.getValue().toString());
                 }
 
