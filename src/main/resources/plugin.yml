@@ -1,9 +1,9 @@
 name: ChunkHeat
 version: ${project.version}
-main: com.bilicraft.chunkheat.ChunkHeat
+main: com.ghostchu.chunkheat.ChunkHeat
 api-version: 1.13
-authors: [ Bilicraft ]
-description: The mob farmer destoryer
+authors: [ Ghost_chu ]
+description: The mob farme breaker
 commands:
   chunkheat:
     description: chunk heat

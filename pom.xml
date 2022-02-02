@@ -11,7 +11,7 @@
 
     <name>ChunkHeat</name>
 
-    <description>The mob farmer destoryer</description>
+    <description>The mob farm breaker</description>
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

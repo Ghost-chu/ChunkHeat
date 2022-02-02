@@ -1,4 +1,4 @@
-package com.bilicraft.chunkheat;
+package com.ghostchu.chunkheat;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -35,7 +35,6 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
     public void onEnable() {
         // Plugin startup logic
         saveDefaultConfig();
-
         chunkHeapMap = CacheBuilder.newBuilder()
                 .expireAfterWrite(getConfig().getInt("reset-time",60), TimeUnit.MINUTES)
                 .initialCapacity(10000)
@@ -123,10 +122,8 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             sender.sendMessage("No permission");
             return true;
         }
-
         if(args.length < 1){
             sender.sendMessage("Reading all data... " + this.chunkHeapMap.size());
-            //this.chunkHeapMap.asMap().entrySet().forEach(set->sender.sendMessage(set.toString()));
             new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getAInteger().get())).forEach(data -> {
                 String color = ChatColor.GREEN.toString();
                 if (data.getValue().getAInteger().get() > limit) {
@@ -137,8 +134,6 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
                     sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getZ()
                             + " => " + data.getValue().toString());
                 }
-
-
             });
         }else{
             //noinspection SwitchStatementWithTooFewBranches
@@ -154,8 +149,6 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             }
 
         }
-
-
         return true;
     }
 }

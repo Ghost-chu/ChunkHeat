@@ -1,4 +1,4 @@
-package com.bilicraft.chunkheat;
+package com.ghostchu.chunkheat;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
