@@ -34,14 +34,14 @@ whitelist-spawnreason:
   - SPAWNER
   - SPAWNER_EGG
   - EXPLOSION
-  entity-weight:
-    ELDER_GUARDIAN: 1
-    WITHER_SKELETON: 1
-    STRAY: 2
-    HUSK: 1
-    ZOMBIE_VILLAGER: 1
-    SKELETON_HORSE: 1
-    ZOMBIE_HORSE: 1
-    ARMOR_STAND: 1
-    DONKEY: 1
+entity-weight:
+  ELDER_GUARDIAN: 1
+  WITHER_SKELETON: 1
+  STRAY: 2
+  HUSK: 1
+  ZOMBIE_VILLAGER: 1
+  SKELETON_HORSE: 1
+  ZOMBIE_HORSE: 1
+  ARMOR_STAND: 1
+  DONKEY: 1
   ```
