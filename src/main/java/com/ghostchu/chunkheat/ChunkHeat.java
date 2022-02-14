@@ -8,6 +8,7 @@ import org.bukkit.Chunk;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -26,20 +27,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ChunkHeat extends JavaPlugin implements Listener {
     private Cache<Chunk, LimitEntry> chunkHeapMap;
-
     private final Set<UUID> whitelistedWorld = new CopyOnWriteArraySet<>();
     private final Set<CreatureSpawnEvent.SpawnReason> whitelistedSpawnReason = new HashSet<>();
     private int limit;
+    private final Map<EntityType, Integer> entityWeight = new HashMap<>();
 
     @Override
     public void onEnable() {
         // Plugin startup logic
         saveDefaultConfig();
+
         chunkHeapMap = CacheBuilder.newBuilder()
                 .expireAfterWrite(getConfig().getInt("reset-time", 60), TimeUnit.MINUTES)
                 .initialCapacity(10000)
                 .maximumSize(10000)
                 .build();
+
+        for (EntityType value : EntityType.values()) {
+            if(!value.isAlive()) continue;
+            if (getConfig().get("entity-weight." + value.name()) == null)
+                getConfig().set("entity-weight." + value.name(), 1);
+            entityWeight.put(value, getConfig().getInt("entity-weight." + value.name(), 1));
+        }
 
         getConfig().getStringList("whitelist-worlds").forEach(world -> {
             World bukkitWorld = Bukkit.getWorld(world);
@@ -55,6 +64,7 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         });
         limit = getConfig().getInt("limit", 5000);
         Bukkit.getPluginManager().registerEvents(this, this);
+        saveConfig();
     }
 
     @Override
@@ -91,7 +101,7 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             counter = new LimitEntry(new AtomicInteger(0), System.currentTimeMillis());
             chunkHeapMap.put(chunk, counter);
         }
-        int counts = counter.getAInteger().incrementAndGet();
+        int counts = counter.getAInteger().getAndAdd(entityWeight.getOrDefault(event.getEntityType(),1));
         if (counts > limit) {
             event.setCancelled(true);
         }
@@ -100,16 +110,15 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onMobDeath(EntityDeathEvent event) {
         if (!(event.getEntity() instanceof Mob)) return;
-        if (!whitelistedWorld.contains(event.getEntity().getWorld().getUID())) return;
-        if (event.getEntity().getLastDamageCause() == null) return;
-        if (event.getEntity().getLastDamageCause().getEntity() instanceof Player) return;
+        if (whitelistedWorld.contains(event.getEntity().getWorld().getUID())) return;
+        if (event.getEntity().getLastDamageCause() != null && event.getEntity().getLastDamageCause().getEntity() instanceof Player) return;
         Chunk chunk = event.getEntity().getLocation().getChunk();
         LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
         if (counter == null) {
             counter = new LimitEntry(new AtomicInteger(0), System.currentTimeMillis());
             chunkHeapMap.put(chunk, counter);
         }
-        int counts = counter.getAInteger().incrementAndGet();
+        int counts = counter.getAInteger().getAndAdd(entityWeight.getOrDefault(event.getEntityType(),1));
         if (counts > limit) {
             event.setDroppedExp(0);
             event.getDrops().clear();
@@ -122,18 +131,22 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             sender.sendMessage("No permission");
             return true;
         }
+
         if (args.length < 1) {
             sender.sendMessage("Reading all data... " + this.chunkHeapMap.size());
+            //this.chunkHeapMap.asMap().entrySet().forEach(set->sender.sendMessage(set.toString()));
             new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getAInteger().get())).forEach(data -> {
                 String color = ChatColor.GREEN.toString();
                 if (data.getValue().getAInteger().get() > limit) {
                     color = ChatColor.YELLOW.toString();
-                    sender.sendMessage(color + "[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getZ()
+                    sender.sendMessage(color + "[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
                             + " => " + data.getValue().toString() + "(" + data.getKey().getBlock(0, 0, 0).getLocation() + ")");
                 } else {
-                    sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getZ()
+                    sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
                             + " => " + data.getValue().toString());
                 }
+
+
             });
         } else {
             //noinspection SwitchStatementWithTooFewBranches
@@ -149,6 +162,8 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             }
 
         }
+
+
         return true;
     }
 }
