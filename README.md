@@ -1,13 +1,13 @@
 # ChunkHeat
 Broad Spectrum Monster Farm Limiter.
 
-## 插件特性
+## Features
 * Mob spawning control
 * Mob drops control
 * Automaticlly reset for restriction
 * Custom Weight
 
-## 工作原理
+## Working principle
 
 ChunkHeat monitoring the mob spawning/deathing events and update the counter.  
 Once the counter reached the limit, the spawning and dropping will be engage.  
