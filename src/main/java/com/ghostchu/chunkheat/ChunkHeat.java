@@ -36,7 +36,7 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         // Plugin startup logic
         saveDefaultConfig();
         chunkHeapMap = CacheBuilder.newBuilder()
-                .expireAfterWrite(getConfig().getInt("reset-time",60), TimeUnit.MINUTES)
+                .expireAfterWrite(getConfig().getInt("reset-time", 60), TimeUnit.MINUTES)
                 .initialCapacity(10000)
                 .maximumSize(10000)
                 .build();
@@ -122,30 +122,30 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             sender.sendMessage("No permission");
             return true;
         }
-        if(args.length < 1){
+        if (args.length < 1) {
             sender.sendMessage("Reading all data... " + this.chunkHeapMap.size());
             new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getAInteger().get())).forEach(data -> {
                 String color = ChatColor.GREEN.toString();
                 if (data.getValue().getAInteger().get() > limit) {
                     color = ChatColor.YELLOW.toString();
-                    sender.sendMessage(color +"[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getZ()
+                    sender.sendMessage(color + "[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getZ()
                             + " => " + data.getValue().toString() + "(" + data.getKey().getBlock(0, 0, 0).getLocation() + ")");
                 } else {
                     sender.sendMessage(color + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getZ()
                             + " => " + data.getValue().toString());
                 }
             });
-        }else{
+        } else {
             //noinspection SwitchStatementWithTooFewBranches
-            switch (args[0]){
+            switch (args[0]) {
                 case "get":
-                 if(sender instanceof Player){
-                     Chunk chunk = ((Player) sender).getLocation().getChunk();
-                     LimitEntry entry = chunkHeapMap.getIfPresent(chunk);
-                     sender.sendMessage(ChatColor.BLUE+"This Chunk heat value is: "+ChatColor.YELLOW+ (entry == null ? "0" : entry.getAInteger().get()));
-                 }else{
-                     sender.sendMessage("This command only can be executed by Player.");
-                 }
+                    if (sender instanceof Player) {
+                        Chunk chunk = ((Player) sender).getLocation().getChunk();
+                        LimitEntry entry = chunkHeapMap.getIfPresent(chunk);
+                        sender.sendMessage(ChatColor.BLUE + "This Chunk heat value is: " + ChatColor.YELLOW + (entry == null ? "0" : entry.getAInteger().get()));
+                    } else {
+                        sender.sendMessage("This command only can be executed by Player.");
+                    }
             }
 
         }
