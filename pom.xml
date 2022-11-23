@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.bilicraft</groupId>
+    <groupId>com.ghostchu</groupId>
     <artifactId>ChunkHeat</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 
     <name>ChunkHeat</name>
 
-    <description>The mob farm breaker</description>
+    <description>An simple broad spectrum monster farm limiter.</description>
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -80,15 +80,6 @@
             <artifactId>spigot-api</artifactId>
             <version>1.17.1-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>co.aikar</groupId>
-            <artifactId>acf-bukkit</artifactId> <!-- Don't forget to replace this -->
-            <version>0.5.1-SNAPSHOT</version> <!-- Replace this as well -->
-            <!-- Example Platform/Version
-            <artifactId>acf-paper</artifactId>
-            <version>0.5.1-SNAPSHOT</version>
-            -->
         </dependency>
     </dependencies>
 </project>

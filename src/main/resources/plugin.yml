@@ -3,7 +3,7 @@ version: ${project.version}
 main: com.ghostchu.chunkheat.ChunkHeat
 api-version: 1.13
 authors: [ Ghost_chu ]
-description: The mob farme breaker
+description: An simple broad spectrum monster farm limiter.
 commands:
   chunkheat:
     description: chunk heat
