@@ -8,6 +8,7 @@ import org.bukkit.Chunk;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
@@ -21,13 +22,11 @@ import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ChunkHeat extends JavaPlugin implements Listener {
     private Cache<Chunk, LimitEntry> chunkHeapMap;
-    private final Set<UUID> whitelistedWorld = new CopyOnWriteArraySet<>();
+    private final Set<String> whitelistedWorld = new HashSet<>();
     private final Set<CreatureSpawnEvent.SpawnReason> whitelistedSpawnReason = new HashSet<>();
     private int limit;
     private final Map<EntityType, Integer> entityWeight = new HashMap<>();
@@ -36,24 +35,31 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
     public void onEnable() {
         // Plugin startup logic
         saveDefaultConfig();
-
-        chunkHeapMap = CacheBuilder.newBuilder()
-                .expireAfterWrite(getConfig().getInt("reset-time", 60), TimeUnit.MINUTES)
+        CacheBuilder<Object, Object> cacheBuilder = CacheBuilder.newBuilder()
                 .initialCapacity(10000)
-                .maximumSize(10000)
-                .build();
+                .maximumSize(10000);
+        if (getConfig().getInt("reset-mode", 0) == 1) {
+            cacheBuilder.expireAfterAccess(getConfig().getInt("reset-time", 60), TimeUnit.MINUTES);
+        } else {
+            cacheBuilder.expireAfterWrite(getConfig().getInt("reset-time", 60), TimeUnit.MINUTES);
+        }
+        this.chunkHeapMap = cacheBuilder.build();
 
+        ConfigurationSection entityWeightSection = getConfig().getConfigurationSection("entity-weight");
+        if (entityWeightSection == null) {
+            entityWeightSection = getConfig().createSection("entity-weight");
+        }
         for (EntityType value : EntityType.values()) {
-            if(!value.isAlive()) continue;
-            if (getConfig().get("entity-weight." + value.name()) == null)
-                getConfig().set("entity-weight." + value.name(), 1);
-            entityWeight.put(value, getConfig().getInt("entity-weight." + value.name(), 1));
+            if (!value.isAlive()) continue;
+            if (entityWeightSection.get(value.name()) == null)
+                entityWeightSection.set(value.name(), 1);
+            entityWeight.put(value, entityWeightSection.getInt(value.name(), 1));
         }
 
         getConfig().getStringList("whitelist-worlds").forEach(world -> {
             World bukkitWorld = Bukkit.getWorld(world);
             if (bukkitWorld == null) return;
-            whitelistedWorld.add(bukkitWorld.getUID());
+            whitelistedWorld.add(bukkitWorld.getName());
         });
         getConfig().getStringList("whitelist-spawnreason").forEach(reason -> {
             try {
@@ -80,13 +86,13 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         getConfig().getStringList("whitelist-worlds").forEach(world -> {
             World bukkitWorld = Bukkit.getWorld(world);
             if (bukkitWorld == null) return;
-            whitelistedWorld.add(bukkitWorld.getUID());
+            whitelistedWorld.add(bukkitWorld.getName());
         });
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorldUnload(WorldUnloadEvent event) {
-        whitelistedWorld.remove(event.getWorld().getUID());
+        whitelistedWorld.remove(event.getWorld().getName());
         chunkHeapMap.asMap().keySet().removeIf(chunk -> chunk.getWorld() == event.getWorld());
     }
 
@@ -94,14 +100,14 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
     public void onMobSpawning(CreatureSpawnEvent event) {
         if (!(event.getEntity() instanceof Mob)) return;
         if (whitelistedSpawnReason.contains(event.getSpawnReason())) return;
-        if (whitelistedWorld.contains(event.getLocation().getWorld().getUID())) return;
+        if (whitelistedWorld.contains(event.getLocation().getWorld().getName())) return;
         Chunk chunk = event.getLocation().getChunk();
         LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
         if (counter == null) {
-            counter = new LimitEntry(new AtomicInteger(0), System.currentTimeMillis());
+            counter = new LimitEntry();
             chunkHeapMap.put(chunk, counter);
         }
-        int counts = counter.getAInteger().getAndAdd(entityWeight.getOrDefault(event.getEntityType(),1));
+        int counts = counter.getCounter().getAndAdd(entityWeight.getOrDefault(event.getEntityType(), 1));
         if (counts > limit) {
             event.setCancelled(true);
         }
@@ -110,15 +116,16 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onMobDeath(EntityDeathEvent event) {
         if (!(event.getEntity() instanceof Mob)) return;
-        if (whitelistedWorld.contains(event.getEntity().getWorld().getUID())) return;
-        if (event.getEntity().getLastDamageCause() != null && event.getEntity().getLastDamageCause().getEntity() instanceof Player) return;
+        if (whitelistedWorld.contains(event.getEntity().getWorld().getName())) return;
+        if (event.getEntity().getLastDamageCause() != null && event.getEntity().getLastDamageCause().getEntity() instanceof Player)
+            return;
         Chunk chunk = event.getEntity().getLocation().getChunk();
         LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
         if (counter == null) {
-            counter = new LimitEntry(new AtomicInteger(0), System.currentTimeMillis());
+            counter = new LimitEntry();
             chunkHeapMap.put(chunk, counter);
         }
-        int counts = counter.getAInteger().getAndAdd(entityWeight.getOrDefault(event.getEntityType(),1));
+        int counts = counter.getCounter().getAndAdd(entityWeight.getOrDefault(event.getEntityType(), 1));
         if (counts > limit) {
             event.setDroppedExp(0);
             event.getDrops().clear();
@@ -135,9 +142,9 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         if (args.length < 1) {
             sender.sendMessage("Reading all data... " + this.chunkHeapMap.size());
             //this.chunkHeapMap.asMap().entrySet().forEach(set->sender.sendMessage(set.toString()));
-            new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getAInteger().get())).forEach(data -> {
+            new LinkedHashMap<>(chunkHeapMap.asMap()).entrySet().stream().sorted(Comparator.comparingInt(o -> o.getValue().getCounter().get())).forEach(data -> {
                 String color = ChatColor.GREEN.toString();
-                if (data.getValue().getAInteger().get() > limit) {
+                if (data.getValue().getCounter().get() > limit) {
                     color = ChatColor.YELLOW.toString();
                     sender.sendMessage(color + "[Suppressed] " + data.getKey().getWorld().getName() + "," + data.getKey().getX() + "," + data.getKey().getX()
                             + " => " + data.getValue().toString() + "(" + data.getKey().getBlock(0, 0, 0).getLocation() + ")");
@@ -155,7 +162,7 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
                     if (sender instanceof Player) {
                         Chunk chunk = ((Player) sender).getLocation().getChunk();
                         LimitEntry entry = chunkHeapMap.getIfPresent(chunk);
-                        sender.sendMessage(ChatColor.BLUE + "This Chunk heat value is: " + ChatColor.YELLOW + (entry == null ? "0" : entry.getAInteger().get()));
+                        sender.sendMessage(ChatColor.BLUE + "This Chunk heat value is: " + ChatColor.YELLOW + (entry == null ? "0" : entry.getCounter().get()));
                     } else {
                         sender.sendMessage("This command only can be executed by Player.");
                     }

@@ -1,7 +1,13 @@
+config-version: 1
+# The world name that won't count
 whitelist-worlds:
   - world_ignored
 # Reset Time: TimeUnit: minute
 reset-time: 60
+# Reset Mode: 0 for reset every <reset-time> minutes
+#             1 for reset every <reset-time> minutes but only that chunk no any activity in <reset-time> minutes
+reset-mode: 0
+# The threshold that will restrict the mob spawning and items/exp dropping.
 limit: 1000
 whitelist-spawnreason:
   - BEEHIVE
@@ -13,3 +19,83 @@ whitelist-spawnreason:
   - SPAWNER
   - SPAWNER_EGG
   - EXPLOSION
+  - CURED
+  - SILVERFISH_BLOCK
+  - SHEARED
+  - SHOULDER_ENTITY
+entity-weight:
+  ELDER_GUARDIAN: 1
+  WITHER_SKELETON: 5
+  STRAY: 3
+  HUSK: 3
+  ZOMBIE_VILLAGER: 3
+  SKELETON_HORSE: 1
+  ZOMBIE_HORSE: 1
+  ARMOR_STAND: 1
+  DONKEY: 1
+  MULE: 1
+  EVOKER: 1
+  VEX: 1
+  VINDICATOR: 5
+  ILLUSIONER: 5
+  CREEPER: 1
+  SKELETON: 1
+  SPIDER: 1
+  GIANT: 1
+  ZOMBIE: 1
+  SLIME: 5
+  GHAST: 1
+  ZOMBIFIED_PIGLIN: 3
+  ENDERMAN: 1
+  CAVE_SPIDER: 3
+  SILVERFISH: 1
+  BLAZE: 3
+  MAGMA_CUBE: 3
+  ENDER_DRAGON: 1
+  WITHER: 1
+  BAT: 1
+  WITCH: 1
+  ENDERMITE: 1
+  GUARDIAN: 3
+  SHULKER: 1
+  PIG: 1
+  SHEEP: 1
+  COW: 1
+  CHICKEN: 1
+  SQUID: 1
+  WOLF: 1
+  MUSHROOM_COW: 1
+  SNOWMAN: 1
+  OCELOT: 1
+  IRON_GOLEM: 100
+  HORSE: 1
+  RABBIT: 1
+  POLAR_BEAR: 1
+  LLAMA: 1
+  PARROT: 1
+  VILLAGER: 1
+  TURTLE: 1
+  PHANTOM: 1
+  COD: 2
+  SALMON: 2
+  PUFFERFISH: 2
+  TROPICAL_FISH: 2
+  DROWNED: 3
+  DOLPHIN: 1
+  CAT: 1
+  PANDA: 1
+  PILLAGER: 2
+  RAVAGER: 2
+  TRADER_LLAMA: 1
+  WANDERING_TRADER: 1
+  FOX: 1
+  BEE: 1
+  HOGLIN: 1
+  PIGLIN: 2
+  STRIDER: 5
+  ZOGLIN: 2
+  PIGLIN_BRUTE: 3
+  AXOLOTL: 1
+  GLOW_SQUID: 3
+  GOAT: 1
+  PLAYER: 1
