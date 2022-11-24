@@ -1,6 +1,8 @@
 # ChunkHeat
 Broad Spectrum Monster Farm Limiter.
 
+[Modrinth](https://modrinth.com/plugin/chunkheat)
+
 ## Features
 
 * Mob spawning control.
