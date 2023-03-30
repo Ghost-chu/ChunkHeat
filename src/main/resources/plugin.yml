@@ -8,3 +8,4 @@ commands:
   chunkheat:
     description: chunk heat
     usage: /chunkheat
+folia-supported: true
