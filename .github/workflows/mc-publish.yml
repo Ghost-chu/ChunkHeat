@@ -47,6 +47,7 @@ jobs:
           spigot
           paper
           purpur
+          folia
         game-versions: |
           1.15
           1.15.1
