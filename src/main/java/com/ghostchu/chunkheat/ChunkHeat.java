@@ -25,7 +25,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class ChunkHeat extends JavaPlugin implements Listener {
-    private Cache<Chunk, LimitEntry> chunkHeapMap;
+    Cache<Chunk, LimitEntry> chunkHeapMap;
     private final Set<String> whitelistedWorld = new HashSet<>();
     private final Set<CreatureSpawnEvent.SpawnReason> whitelistedSpawnReason = new HashSet<>();
     private int limit;
@@ -71,6 +71,54 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         limit = getConfig().getInt("limit", 5000);
         Bukkit.getPluginManager().registerEvents(this, this);
         saveConfig();
+
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new ChunkHeatPlaceholder(this).register();
+        }
+    }
+
+
+    private void loadConfiguration() {
+        CacheBuilder<Object, Object> cacheBuilder = CacheBuilder.newBuilder()
+                .initialCapacity(10000)
+                .maximumSize(10000);
+        if (getConfig().getInt("reset-mode", 0) == 1) {
+            cacheBuilder.expireAfterAccess(getConfig().getInt("reset-time", 60), TimeUnit.MINUTES);
+        } else {
+            cacheBuilder.expireAfterWrite(getConfig().getInt("reset-time", 60), TimeUnit.MINUTES);
+        }
+        this.chunkHeapMap = cacheBuilder.build();
+
+        ConfigurationSection entityWeightSection = getConfig().getConfigurationSection("entity-weight");
+        if (entityWeightSection == null) {
+            entityWeightSection = getConfig().createSection("entity-weight");
+        }
+        entityWeight.clear(); // Clear the existing entityWeight map before loading new values
+        for (EntityType value : EntityType.values()) {
+            if (!value.isAlive()) continue;
+            if (entityWeightSection.get(value.name()) == null)
+                entityWeightSection.set(value.name(), 1);
+            entityWeight.put(value, entityWeightSection.getInt(value.name(), 1));
+        }
+
+        whitelistedWorld.clear(); // Clear the existing whitelistedWorld set before loading new values
+        getConfig().getStringList("whitelist-worlds").forEach(world -> {
+            World bukkitWorld = Bukkit.getWorld(world);
+            if (bukkitWorld != null) {
+                whitelistedWorld.add(bukkitWorld.getName());
+            }
+        });
+
+        whitelistedSpawnReason.clear(); // Clear the existing whitelistedSpawnReason set before loading new values
+        getConfig().getStringList("whitelist-spawnreason").forEach(reason -> {
+            try {
+                CreatureSpawnEvent.SpawnReason bukkitReason = CreatureSpawnEvent.SpawnReason.valueOf(reason);
+                whitelistedSpawnReason.add(bukkitReason);
+            } catch (IllegalArgumentException ignored) {
+            }
+        });
+
+        limit = getConfig().getInt("limit", 5000);
     }
 
     @Override
@@ -166,6 +214,11 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
                     } else {
                         sender.sendMessage("This command only can be executed by Player.");
                     }
+                    break;
+                case "reload":
+                    reloadConfig(); // Reload the configuration from config.yml
+                    loadConfiguration(); // Load the new configuration settings into the plugin
+                    sender.sendMessage(ChatColor.GREEN + "ChunkHeat configuration reloaded.");
             }
 
         }
