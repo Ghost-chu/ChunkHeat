@@ -9,6 +9,7 @@ import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
@@ -19,8 +20,13 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -30,10 +36,14 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
     private final Set<CreatureSpawnEvent.SpawnReason> whitelistedSpawnReason = new HashSet<>();
     private int limit;
     private final Map<EntityType, Integer> entityWeight = new HashMap<>();
+    private boolean preventDropXp; // New config option to prevent XP dropping
+    private boolean preventDropItems; // New config option to prevent item dropping
+    private boolean increaseHeatOnSpawn; // New config option to increase "heat" on mob spawn
+    private int minPlayersToIncreaseHeat; // New config option for minimum player count to increase "heat"
+
 
     @Override
     public void onEnable() {
-        // Plugin startup logic
         saveDefaultConfig();
         CacheBuilder<Object, Object> cacheBuilder = CacheBuilder.newBuilder()
                 .initialCapacity(10000)
@@ -69,14 +79,20 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             }
         });
         limit = getConfig().getInt("limit", 5000);
+        preventDropXp = getConfig().getBoolean("prevent-drop-xp", false);
+        preventDropItems = getConfig().getBoolean("prevent-drop-items", false);
         Bukkit.getPluginManager().registerEvents(this, this);
         saveConfig();
 
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new ChunkHeatPlaceholder(this).register();
         }
-    }
 
+        increaseHeatOnSpawn = getConfig().getBoolean("increase-heat-on-spawn", true);
+        minPlayersToIncreaseHeat = getConfig().getInt("min-players-to-increase-heat", -1);
+
+        updateConfig();
+    }
 
     private void loadConfiguration() {
         CacheBuilder<Object, Object> cacheBuilder = CacheBuilder.newBuilder()
@@ -93,7 +109,7 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         if (entityWeightSection == null) {
             entityWeightSection = getConfig().createSection("entity-weight");
         }
-        entityWeight.clear(); // Clear the existing entityWeight map before loading new values
+        entityWeight.clear();
         for (EntityType value : EntityType.values()) {
             if (!value.isAlive()) continue;
             if (entityWeightSection.get(value.name()) == null)
@@ -101,7 +117,7 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             entityWeight.put(value, entityWeightSection.getInt(value.name(), 1));
         }
 
-        whitelistedWorld.clear(); // Clear the existing whitelistedWorld set before loading new values
+        whitelistedWorld.clear();
         getConfig().getStringList("whitelist-worlds").forEach(world -> {
             World bukkitWorld = Bukkit.getWorld(world);
             if (bukkitWorld != null) {
@@ -109,7 +125,7 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
             }
         });
 
-        whitelistedSpawnReason.clear(); // Clear the existing whitelistedSpawnReason set before loading new values
+        whitelistedSpawnReason.clear();
         getConfig().getStringList("whitelist-spawnreason").forEach(reason -> {
             try {
                 CreatureSpawnEvent.SpawnReason bukkitReason = CreatureSpawnEvent.SpawnReason.valueOf(reason);
@@ -119,12 +135,40 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         });
 
         limit = getConfig().getInt("limit", 5000);
+
+        preventDropXp = getConfig().getBoolean("prevent-drop-xp", false);
+        preventDropItems = getConfig().getBoolean("prevent-drop-items", false);
+    }
+
+    private void updateConfig() {
+        InputStream defaultConfigStream = getResource("config.yml");
+        if (defaultConfigStream != null) {
+            YamlConfiguration defaultConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(defaultConfigStream));
+
+            // Get the live configuration
+            File configFile = new File(getDataFolder(), "config.yml");
+            YamlConfiguration liveConfig = YamlConfiguration.loadConfiguration(configFile);
+
+            // Compare and add missing keys
+            for (String key : defaultConfig.getKeys(true)) {
+                if (!liveConfig.isSet(key)) {
+                    liveConfig.set(key, defaultConfig.get(key));
+                }
+            }
+
+            // Save the updated live configuration
+            try {
+                liveConfig.save(configFile);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
     public void onDisable() {
         // Plugin shutdown logic
-        chunkHeapMap.invalidateAll(); // Garbage collection
+        chunkHeapMap.invalidateAll();
         whitelistedWorld.clear();
         whitelistedSpawnReason.clear();
     }
@@ -150,14 +194,27 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         if (whitelistedSpawnReason.contains(event.getSpawnReason())) return;
         if (whitelistedWorld.contains(event.getLocation().getWorld().getName())) return;
         Chunk chunk = event.getLocation().getChunk();
-        LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
-        if (counter == null) {
-            counter = new LimitEntry();
-            chunkHeapMap.put(chunk, counter);
+
+        // Check if the min player count condition is met
+        if (minPlayersToIncreaseHeat < 0 || Bukkit.getOnlinePlayers().size() >= minPlayersToIncreaseHeat) {
+            if (increaseHeatOnSpawn) {
+                // Increase the "heat" score in the chunk where the mob spawns based on entity type weight
+                LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
+                if (counter == null) {
+                    counter = new LimitEntry();
+                    chunkHeapMap.put(chunk, counter);
+                }
+                int counts = counter.getCounter().getAndAdd(entityWeight.getOrDefault(event.getEntityType(), 1));
+                if (counts > limit) {
+                    event.setCancelled(true);
+                }
+            }
         }
-        int counts = counter.getCounter().getAndAdd(entityWeight.getOrDefault(event.getEntityType(), 1));
-        if (counts > limit) {
-            event.setCancelled(true);
+
+        // Check if the mob spawning should also increase the "heat" score in the chunk where it dies
+        if (increaseHeatOnSpawn || event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
+            // Increase the "heat" score in the chunk where the mob dies
+            event.getEntity().setMetadata("chunkheat-spawned-in-chunk", new FixedMetadataValue(this, chunk));
         }
     }
 
@@ -167,16 +224,42 @@ public final class ChunkHeat extends JavaPlugin implements Listener {
         if (whitelistedWorld.contains(event.getEntity().getWorld().getName())) return;
         if (event.getEntity().getLastDamageCause() != null && event.getEntity().getLastDamageCause().getEntity() instanceof Player)
             return;
-        Chunk chunk = event.getEntity().getLocation().getChunk();
-        LimitEntry counter = chunkHeapMap.getIfPresent(chunk);
-        if (counter == null) {
-            counter = new LimitEntry();
-            chunkHeapMap.put(chunk, counter);
-        }
-        int counts = counter.getCounter().getAndAdd(entityWeight.getOrDefault(event.getEntityType(), 1));
-        if (counts > limit) {
-            event.setDroppedExp(0);
-            event.getDrops().clear();
+
+        // Check if the mob died in a different chunk than where it spawned
+        if (event.getEntity().hasMetadata("chunkheat-spawned-in-chunk")) {
+            Chunk spawnedInChunk = (Chunk) event.getEntity().getMetadata("chunkheat-spawned-in-chunk").get(0).value();
+
+            if (!spawnedInChunk.equals(event.getEntity().getLocation().getChunk())) {
+                // Increase the "heat" score in the chunk where the mob dies based on entity type weight
+                LimitEntry deathChunkCounter = chunkHeapMap.getIfPresent(event.getEntity().getLocation().getChunk());
+                if (deathChunkCounter == null) {
+                    deathChunkCounter = new LimitEntry();
+                    chunkHeapMap.put(event.getEntity().getLocation().getChunk(), deathChunkCounter);
+                }
+                int deathChunkCounts = deathChunkCounter.getCounter().getAndAdd(entityWeight.getOrDefault(event.getEntityType(), 1));
+                if (deathChunkCounts > limit) {
+                    // Check configuration options to determine whether to prevent XP and items from dropping
+                    if (preventDropXp) {
+                        event.setDroppedExp(0);
+                    }
+                    if (preventDropItems) {
+                        event.getDrops().clear();
+                    }
+                }
+
+                // Increase the "heat" score in the chunk where the mob spawns
+                LimitEntry spawnChunkCounter = chunkHeapMap.getIfPresent(spawnedInChunk);
+                if (spawnChunkCounter == null) {
+                    spawnChunkCounter = new LimitEntry();
+                    chunkHeapMap.put(spawnedInChunk, spawnChunkCounter);
+                }
+                int spawnChunkCounts = spawnChunkCounter.getCounter().getAndAdd(entityWeight.getOrDefault(event.getEntityType(), 1));
+                if (spawnChunkCounts > limit) {
+                    // You can optionally choose to prevent something in the spawn chunk as well if needed.
+                    // For example, you might want to prevent spawning in the spawn chunk too.
+                    // spawnChunkCounter.setCounter(limit); // Set the counter to the limit to prevent spawning in the spawn chunk.
+                }
+            }
         }
     }
 
