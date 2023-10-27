@@ -7,8 +7,23 @@ reset-time: 60
 # Reset Mode: 0 for reset every <reset-time> minutes
 #             1 for reset every <reset-time> minutes but only that chunk no any activity in <reset-time> minutes
 reset-mode: 0
+# Reset tolerance level: Maximum allowable increase in heat score to prevent reset
+reset-tolerance: 10
 # The threshold that will restrict the mob spawning and items/exp dropping.
 limit: 1000
+
+# Prevent mobs from dropping XP when above heat limit
+prevent-drop-xp: false
+# Prevent mobs from dropping Items when above heat limit
+prevent-drop-items: false
+
+# Choose if the Heat score should only be increased on kill or also on spawn
+increase-heat-on-spawn: true
+
+# Amount of online players required for heat to increase
+# Set to 0 or -1 to ignore
+min-players-to-increase-heat: 2
+
 whitelist-spawnreason:
   - BEEHIVE
   - BREEDING

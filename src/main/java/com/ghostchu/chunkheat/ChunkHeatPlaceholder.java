@@ -23,7 +23,7 @@ public class ChunkHeatPlaceholder extends PlaceholderExpansion {
 
     @Override
     public String getAuthor() {
-        return "T14D3"; // Replace with your name or plugin name
+        return "T14D3";
     }
 
     @Override
